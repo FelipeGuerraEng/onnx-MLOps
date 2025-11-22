@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+onnxruntime
+onnx
+numpy
+azure-storage-blob
+python-dotenv
+pytest
