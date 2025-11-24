@@ -4,9 +4,25 @@ from typing import List
 
 import numpy as np
 import onnxruntime as ort
+import onnx
+from onnx import numpy_helper
 
 from .storage import get_blob_bytes
 
+def load_example_pixels_from_blob():
+    """
+    Carga el tensor de ejemplo (input_0.pb) desde Blob y lo devuelve
+    como lista de 784 píxeles (float) para usar en /predict_example.
+    """
+    input_blob_path = os.getenv("TEST_INPUT_BLOB_PATH", "data/test_data_set_0/input_0.pb")
+    input_bytes = get_blob_bytes(input_blob_path)
+
+    tensor = onnx.TensorProto()
+    tensor.ParseFromString(input_bytes)
+
+    arr = numpy_helper.to_array(tensor).astype("float32")  # (1, 1, 28, 28)
+    pixels = arr.reshape(-1).tolist()  # 784 valores
+    return pixels
 
 class OnnxMNISTModel:
     """

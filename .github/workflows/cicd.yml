@@ -8,16 +8,17 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  AZURE_STORAGE_CONTAINER_NAME: "proyecto-ml"
-  MODEL_BLOB_PATH: "models/MNIST-1.ONNX"
-  TEST_DATA_BLOB_PATH: "data/mnist_test.csv"
-  MIN_TEST_ACCURACY: "0.80"
 
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
       AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      AZURE_STORAGE_CONTAINER_NAME: "proyecto-ml"
+      MODEL_BLOB_PATH: "models/mnist-12.onnx"
+      TEST_INPUT_BLOB_PATH: "data/test_data_set_0/input_0.pb"
+      TEST_OUTPUT_BLOB_PATH: "data/test_data_set_0/output_0.pb"
+      MAX_TEST_OUTPUT_DIFF: "0.001"
 
     steps:
       - name: Checkout repo
@@ -37,14 +38,9 @@ jobs:
         run: pytest -v
 
   build_and_deploy_dev:
-    runs-on: ubuntu-latest
     needs: test
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
-    env:
-      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-      AZURE_STORAGE_CONTAINER_NAME: "proyecto-ml"
-      MODEL_BLOB_PATH: "models/MNIST-1.ONNX"
-      ENVIRONMENT: "dev"
 
     steps:
       - name: Checkout repo
@@ -62,17 +58,21 @@ jobs:
           acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           containerAppName: ${{ secrets.AZURE_CONTAINERAPP_NAME_DEV }}
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          containerAppEnvironment: ${{ secrets.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          ingress: external
+          targetPort: 8000
+          environmentVariables: |
+            ENVIRONMENT=dev
+            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            AZURE_STORAGE_CONTAINER_NAME=proyecto-ml
+            MODEL_BLOB_PATH=models/mnist-12.onnx
+            TEST_INPUT_BLOB_PATH=data/test_data_set_0/input_0.pb
+            TEST_OUTPUT_BLOB_PATH=data/test_data_set_0/output_0.pb
+            MAX_TEST_OUTPUT_DIFF=0.001
 
   build_and_deploy_prod:
-    runs-on: ubuntu-latest
     needs: test
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/prod'
-    env:
-      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-      AZURE_STORAGE_CONTAINER_NAME: "proyecto-ml"
-      MODEL_BLOB_PATH: "models/MNIST-1.ONNX"
-      ENVIRONMENT: "prod"
 
     steps:
       - name: Checkout repo
@@ -90,4 +90,13 @@ jobs:
           acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           containerAppName: ${{ secrets.AZURE_CONTAINERAPP_NAME_PROD }}
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          containerAppEnvironment: ${{ secrets.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          ingress: external
+          targetPort: 8000
+          environmentVariables: |
+            ENVIRONMENT=prod
+            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            AZURE_STORAGE_CONTAINER_NAME=proyecto-ml
+            MODEL_BLOB_PATH=models/mnist-12.onnx
+            TEST_INPUT_BLOB_PATH=data/test_data_set_0/input_0.pb
+            TEST_OUTPUT_BLOB_PATH=data/test_data_set_0/output_0.pb
+            MAX_TEST_OUTPUT_DIFF=0.001
