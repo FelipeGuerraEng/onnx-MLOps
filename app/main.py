@@ -42,7 +42,7 @@ def predict(request: PredictRequest) -> PredictResponse:
 def predict_example() -> PredictResponse:
     """
     Endpoint de demo: usa el input de prueba que está en Blob (input_0.pb),
-    hace la predicción y la registra en logs.
+    hace la predicción y la registra en logs
     """
     try:
         pixels = load_example_pixels_from_blob()
