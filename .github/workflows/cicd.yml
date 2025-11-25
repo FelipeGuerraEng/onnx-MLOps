@@ -1,0 +1,94 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      AZURE_STORAGE_CONTAINER_NAME: "proyecto-ml"
+      MODEL_BLOB_PATH: "models/mnist-12.onnx"
+      TEST_INPUT_BLOB_PATH: "data/test_data_set_0/input_0.pb"
+      TEST_OUTPUT_BLOB_PATH: "data/test_data_set_0/output_0.pb"
+      MAX_TEST_OUTPUT_DIFF: "0.001"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -v
+
+  build_and_push_dev:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          az acr login --name $ACR_NAME
+
+      - name: Build and push image to ACR (dev)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          IMAGE_NAME=onnx-mlops-api
+          IMAGE_TAG=dev
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+
+  build_and_push_prod:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/prod'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          az acr login --name $ACR_NAME
+
+      - name: Build and push image to ACR (prod)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          IMAGE_NAME=onnx-mlops-api
+          IMAGE_TAG=prod
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
