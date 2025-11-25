@@ -37,7 +37,7 @@ jobs:
       - name: Run tests
         run: pytest -v
 
-  build_and_deploy_dev:
+  build_and_push_dev:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
@@ -51,25 +51,20 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and deploy to Azure Container Apps (dev)
-        uses: azure/container-apps-deploy-action@v1
+      - name: Build and push image to ACR (dev)
+        uses: azure/cli@v2
         with:
-          appSourcePath: ${{ github.workspace }}
-          acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          containerAppName: ${{ secrets.AZURE_CONTAINERAPP_NAME_DEV }}
-          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          ingress: external
-          targetPort: 8000
-          environmentVariables: |
-            ENVIRONMENT=dev
-            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-            AZURE_STORAGE_CONTAINER_NAME=proyecto-ml
-            MODEL_BLOB_PATH=models/mnist-12.onnx
-            TEST_INPUT_BLOB_PATH=data/test_data_set_0/input_0.pb
-            TEST_OUTPUT_BLOB_PATH=data/test_data_set_0/output_0.pb
-            MAX_TEST_OUTPUT_DIFF=0.001
+          inlineScript: |
+            ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+            IMAGE_NAME=onnx-mlops-api
+            IMAGE_TAG=dev
 
-  build_and_deploy_prod:
+            az acr build \
+              --registry $ACR_NAME \
+              --image $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG \
+              .
+
+  build_and_push_prod:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/prod'
@@ -83,20 +78,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and deploy to Azure Container Apps (prod)
-        uses: azure/container-apps-deploy-action@v1
+      - name: Build and push image to ACR (prod)
+        uses: azure/cli@v2
         with:
-          appSourcePath: ${{ github.workspace }}
-          acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          containerAppName: ${{ secrets.AZURE_CONTAINERAPP_NAME_PROD }}
-          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          ingress: external
-          targetPort: 8000
-          environmentVariables: |
-            ENVIRONMENT=prod
-            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-            AZURE_STORAGE_CONTAINER_NAME=proyecto-ml
-            MODEL_BLOB_PATH=models/mnist-12.onnx
-            TEST_INPUT_BLOB_PATH=data/test_data_set_0/input_0.pb
-            TEST_OUTPUT_BLOB_PATH=data/test_data_set_0/output_0.pb
-            MAX_TEST_OUTPUT_DIFF=0.001
+          inlineScript: |
+            ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+            IMAGE_NAME=onnx-mlops-api
+            IMAGE_TAG=prod
+
+            az acr build \
+              --registry $ACR_NAME \
+              --image $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG \
+              .
