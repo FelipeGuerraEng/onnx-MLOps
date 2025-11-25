@@ -51,18 +51,19 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and push image to ACR (dev)
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-            IMAGE_NAME=onnx-mlops-api
-            IMAGE_TAG=dev
+      - name: Log in to ACR
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          az acr login --name $ACR_NAME
 
-            az acr build \
-              --registry $ACR_NAME \
-              --image $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG \
-              .
+      - name: Build and push image to ACR (dev)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          IMAGE_NAME=onnx-mlops-api
+          IMAGE_TAG=dev
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
 
   build_and_push_prod:
     needs: test
@@ -78,15 +79,16 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and push image to ACR (prod)
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-            IMAGE_NAME=onnx-mlops-api
-            IMAGE_TAG=prod
+      - name: Log in to ACR
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          az acr login --name $ACR_NAME
 
-            az acr build \
-              --registry $ACR_NAME \
-              --image $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG \
-              .
+      - name: Build and push image to ACR (prod)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          IMAGE_NAME=onnx-mlops-api
+          IMAGE_TAG=prod
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
