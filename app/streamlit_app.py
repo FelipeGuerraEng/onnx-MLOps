@@ -4,8 +4,8 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageOps
 
-from .onnx_inference import OnnxMNISTModel
-from .storage import append_prediction_log
+from app.onnx_inference import OnnxMNISTModel
+from app.storage import append_prediction_log
 
 st.set_page_config(page_title="MNIST ONNX - Demo", page_icon="🔮", layout="centered")
 
