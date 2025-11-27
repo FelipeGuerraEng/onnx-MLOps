@@ -8,6 +8,11 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
+  IMAGE_NAME: onnx-mlops-api
+
+  # Nombres NO sensibles (quemados)
+  AZURE_CONTAINERAPP_NAME_DEV: "mnist-api-dev"
+  AZURE_CONTAINERAPP_NAME_PROD: "mnist-api-prod"
 
 jobs:
   test:
@@ -21,11 +26,9 @@ jobs:
       MAX_TEST_OUTPUT_DIFF: "0.001"
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -37,58 +40,98 @@ jobs:
       - name: Run tests
         run: pytest -v
 
-  build_and_push_dev:
+  build_push_and_rollout_dev:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Log in to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Prepare az (containerapp extension)
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az extension add --name containerapp --upgrade
+
       - name: Log in to ACR
         run: |
-          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          az acr login --name $ACR_NAME
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
-      - name: Build and push image to ACR (dev)
+      - name: Build and push images to ACR (dev)
         run: |
+          set -euo pipefail
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=dev
+          TAG_FLOATING=dev
+          TAG_IMMUTABLE=dev-${{ github.sha }}
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          docker build -t $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE .
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE
 
-  build_and_push_prod:
+          docker tag  $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+
+      - name: Rollout new revision (dev) - revision copy
+        run: |
+          set -euo pipefail
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          RG=${{ secrets.AZURE_RESOURCE_GROUP }}
+          APP="${{ env.AZURE_CONTAINERAPP_NAME_DEV }}"
+          TAG_IMMUTABLE=dev-${{ github.sha }}
+
+          az containerapp revision copy \
+            --name "$APP" \
+            --resource-group "$RG" \
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"
+
+  build_push_and_rollout_prod:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/prod'
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Log in to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Prepare az (containerapp extension)
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az extension add --name containerapp --upgrade
+
       - name: Log in to ACR
         run: |
-          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          az acr login --name $ACR_NAME
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
-      - name: Build and push image to ACR (prod)
+      - name: Build and push images to ACR (prod)
         run: |
+          set -euo pipefail
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=prod
+          TAG_FLOATING=prod
+          TAG_IMMUTABLE=prod-${{ github.sha }}
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          docker build -t $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE .
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE
+
+          docker tag  $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+
+      - name: Rollout new revision (prod) - revision copy
+        run: |
+          set -euo pipefail
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          RG=${{ secrets.AZURE_RESOURCE_GROUP }}
+          APP="${{ env.AZURE_CONTAINERAPP_NAME_PROD }}"
+          TAG_IMMUTABLE=prod-${{ github.sha }}
+
+          az containerapp revision copy \
+            --name "$APP" \
+            --resource-group "$RG" \
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"

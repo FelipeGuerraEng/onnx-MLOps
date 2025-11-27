@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 # Evitar buffering de logs
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 WORKDIR /app
 
@@ -17,8 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY app ./app
 
-# Puerto donde corre uvicorn
-EXPOSE 8000
+EXPOSE 8501
 
-# Comando por defecto
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["streamlit", "run", "app/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
