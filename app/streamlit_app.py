@@ -1,13 +1,16 @@
-import io
-import time
-import numpy as np
-import streamlit as st
-from PIL import Image, ImageOps
+import os
+import sys
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+import io
+import time
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageOps
 
 from app.onnx_inference import OnnxMNISTModel
 from app.storage import append_prediction_log
