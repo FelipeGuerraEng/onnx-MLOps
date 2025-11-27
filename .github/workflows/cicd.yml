@@ -8,6 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
+  IMAGE_NAME: onnx-mlops-api
 
 jobs:
   test:
@@ -37,7 +38,7 @@ jobs:
       - name: Run tests
         run: pytest -v
 
-  build_and_push_dev:
+  build_push_and_deploy_dev:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
@@ -53,19 +54,36 @@ jobs:
 
       - name: Log in to ACR
         run: |
-          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          az acr login --name $ACR_NAME
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
-      - name: Build and push image to ACR (dev)
+      - name: Build and push images (dev)
         run: |
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=dev
+          SHA=${{ github.sha }}
+          TAG_IMMUTABLE=dev-$SHA
+          TAG_FLOATING=dev
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          docker build -t $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE .
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE
 
-  build_and_push_prod:
+          # (Opcional) también mantener tag "dev" apuntando a lo último
+          docker tag  $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+
+      - name: Update Container App to new image (dev)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          RG=${{ secrets.AZURE_RESOURCE_GROUP }}
+          APP_NAME=${{ secrets.AZURE_CONTAINERAPP_NAME_DEV }}
+          SHA=${{ github.sha }}
+          TAG_IMMUTABLE=dev-$SHA
+
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RG" \
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"
+
+  build_push_and_deploy_prod:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/prod'
@@ -81,14 +99,31 @@ jobs:
 
       - name: Log in to ACR
         run: |
-          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          az acr login --name $ACR_NAME
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
-      - name: Build and push image to ACR (prod)
+      - name: Build and push images (prod)
         run: |
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=prod
+          SHA=${{ github.sha }}
+          TAG_IMMUTABLE=prod-$SHA
+          TAG_FLOATING=prod
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          docker build -t $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE .
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE
+
+          # (Opcional) también mantener tag "prod" apuntando a lo último
+          docker tag  $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+          docker push $ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_FLOATING
+
+      - name: Update Container App to new image (prod)
+        run: |
+          ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          RG=${{ secrets.AZURE_RESOURCE_GROUP }}
+          APP_NAME=${{ secrets.AZURE_CONTAINERAPP_NAME_PROD }}
+          SHA=${{ github.sha }}
+          TAG_IMMUTABLE=prod-$SHA
+
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RG" \
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"

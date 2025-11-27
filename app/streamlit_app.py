@@ -17,7 +17,7 @@ from app.storage import append_prediction_log
 
 st.set_page_config(page_title="MNIST ONNX - Demo", page_icon="🔮", layout="centered")
 
-st.title("MNIST ONNX - Predicción")
+st.title("MNIST ONNX - Proyecto MLOPS")
 st.write("Sube una imagen de un dígito (0–9). La app la normaliza a 28x28 y predice con el modelo ONNX.")
 
 @st.cache_resource
