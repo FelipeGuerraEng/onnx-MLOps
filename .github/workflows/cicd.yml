@@ -56,14 +56,19 @@ jobs:
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
           az acr login --name $ACR_NAME
 
-      - name: Build and push image to ACR (dev)
+      - name: Build and push images to ACR (dev)
         run: |
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
           IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=dev
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          TAG_FLOATING=dev
+          TAG_IMMUTABLE=dev-${{ github.sha }}
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING
+
+          docker tag  $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_IMMUTABLE
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_IMMUTABLE
 
   build_and_push_prod:
     needs: test
@@ -84,11 +89,16 @@ jobs:
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
           az acr login --name $ACR_NAME
 
-      - name: Build and push image to ACR (prod)
+      - name: Build and push images to ACR (prod)
         run: |
           ACR_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}
           IMAGE_NAME=onnx-mlops-api
-          IMAGE_TAG=prod
 
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+          TAG_FLOATING=prod
+          TAG_IMMUTABLE=prod-${{ github.sha }}
+
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING
+
+          docker tag  $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_FLOATING $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_IMMUTABLE
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG_IMMUTABLE
