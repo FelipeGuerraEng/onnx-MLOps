@@ -12,7 +12,7 @@ env:
 
   # Nombres NO sensibles (quemados)
   AZURE_CONTAINERAPP_NAME_DEV: "mnist-api-dev"
-  AZURE_CONTAINERAPP_NAME_PROD: "mnist-api-prod"
+  AZURE_CONTAINERAPP_NAME_PROD: "mnist-api-dev"
 
 jobs:
   test:
