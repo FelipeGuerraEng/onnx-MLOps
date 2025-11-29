@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 from app.onnx_inference import OnnxMNISTModel
 from app.storage import append_prediction_log
 
-st.set_page_config(page_title="MNIST ONNX - Demo", page_icon="🔮", layout="centered")
+st.set_page_config(page_title="MNIST ONNX - Prueba", page_icon="🔮", layout="centered")
 
 env_name = os.getenv("ENVIRONMENT", "dev").lower()
 app_version = os.getenv("APP_VERSION", "local")
