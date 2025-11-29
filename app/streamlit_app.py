@@ -17,6 +17,15 @@ from app.storage import append_prediction_log
 
 st.set_page_config(page_title="MNIST ONNX - Demo", page_icon="🔮", layout="centered")
 
+env_name = os.getenv("ENVIRONMENT", "dev").lower()
+app_version = os.getenv("APP_VERSION", "local")
+
+badge = "🟢 DEV" if env_name == "dev" else ("🔴 PROD" if env_name == "prod" else f"🟡 {env_name.upper()}")
+
+st.sidebar.header("Ambiente")
+st.sidebar.markdown(f"**{badge}**")
+st.sidebar.caption(f"APP_VERSION: {app_version}")
+
 st.title("MNIST ONNX - Proyecto MLOPS")
 st.write("Sube una imagen de un dígito (0–9). La app la normaliza a 28x28 y predice con el modelo ONNX.")
 

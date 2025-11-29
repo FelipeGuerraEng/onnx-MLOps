@@ -10,7 +10,7 @@ env:
   PYTHON_VERSION: "3.11"
   IMAGE_NAME: onnx-mlops-api
 
-  # Nombres NO sensibles (quemados)
+  # Una sola Container App para ambos
   AZURE_CONTAINERAPP_NAME_DEV: "mnist-api-dev"
   AZURE_CONTAINERAPP_NAME_PROD: "mnist-api-dev"
 
@@ -86,7 +86,8 @@ jobs:
           az containerapp revision copy \
             --name "$APP" \
             --resource-group "$RG" \
-            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE" \
+            --set-env-vars ENVIRONMENT=dev APP_VERSION=${{ github.sha }}
 
   build_push_and_rollout_prod:
     needs: test
@@ -134,4 +135,5 @@ jobs:
           az containerapp revision copy \
             --name "$APP" \
             --resource-group "$RG" \
-            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE"
+            --image "$ACR_NAME.azurecr.io/${{ env.IMAGE_NAME }}:$TAG_IMMUTABLE" \
+            --set-env-vars ENVIRONMENT=prod APP_VERSION=${{ github.sha }}
